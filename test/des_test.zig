@@ -10,10 +10,8 @@ const testing = @import("std").testing;
 const warn = @import("std").debug.warn;
 
 fn desEncryptTest(keyLong: u64, data: u64) u64 {
-    var mutableKey = keyLong;
-    var keyBytes = mem.asBytes(&mutableKey);
-    mem.reverse(u8, keyBytes);
-    const key = keyBytes.*;
+    const reversedKey = @byteSwap(u64, keyLong);
+    const key = mem.asBytes(&reversedKey).*;
 
     var keys = des.subkeys(&key);
     const encryptedBytes = des.desRounds(keys, data, true);
@@ -798,10 +796,8 @@ test "test vectors ECB encrypt" {
 }
 
 fn desDecryptTest(keyLong: u64, data: u64) u64 {
-    var mutableKey = keyLong;
-    var keyBytes = mem.asBytes(&mutableKey);
-    mem.reverse(u8, keyBytes);
-    const key = keyBytes.*;
+    const reversedKey = @byteSwap(u64, keyLong);
+    const key = mem.asBytes(&reversedKey).*;
 
     var keys = des.subkeys(&key);
     const plainBytes = des.desRounds(keys, data, false);
