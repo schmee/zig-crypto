@@ -168,10 +168,6 @@ fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
     return out;
 }
 
-const shifts = [_]u5{
-    1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
-};
-
 fn sbox(long: u48) u32 {
     var out: u32 = 0;
     for (sboxes) |*box, i| {
@@ -206,6 +202,10 @@ pub fn desRounds(keys: [16]u48, data: u64, comptime encrypt: bool) [8]u8 {
 
     return mem.asBytes(&out).*;
 }
+
+const shifts = [_]u5{
+    1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
+};
 
 pub fn subkeys(keyBytes: []const u8) [16]u48 {
     const size: u6 = math.maxInt(u6);
