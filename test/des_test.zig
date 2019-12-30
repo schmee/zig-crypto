@@ -1637,29 +1637,29 @@ test "decrypt random data with ECB" {
 
 test "3DES ECB crypt" {
     var allocator = std.heap.page_allocator;
-    var inData = [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0,};
+    var inData = [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0 };
     var encryptedData = try allocator.alloc(u8, inData.len);
     var decryptedData = try allocator.alloc(u8, inData.len);
     defer allocator.free(encryptedData);
     defer allocator.free(encryptedData);
 
-    var key = [_]u8 {0} ** 24;
-    var out = [_]u8 { 0x8C, 0xA6, 0x4D, 0xE9, 0xC1, 0xB1, 0x23, 0xA7 };
+    var key = [_]u8{0} ** 24;
+    var out = [_]u8{ 0x8C, 0xA6, 0x4D, 0xE9, 0xC1, 0xB1, 0x23, 0xA7 };
     des.des3EncryptEcb(key, &inData, encryptedData);
     des.des3DecryptEcb(key, encryptedData, decryptedData);
     testing.expectEqualSlices(u8, encryptedData, &out);
     testing.expectEqualSlices(u8, decryptedData, &inData);
 
-    key = [_]u8 { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 };
-    out = [_]u8 { 0x89, 0x4B, 0xC3, 0x08, 0x54, 0x26, 0xA4, 0x41, };
+    key = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };
+    out = [_]u8{ 0x89, 0x4B, 0xC3, 0x08, 0x54, 0x26, 0xA4, 0x41 };
     des.des3EncryptEcb(key, &inData, encryptedData);
     des.des3DecryptEcb(key, encryptedData, decryptedData);
     testing.expectEqualSlices(u8, encryptedData, &out);
     testing.expectEqualSlices(u8, decryptedData, &inData);
 
-    key = [_]u8 { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 };
-    inData = [_]u8{ 0,1,2,3,4,5,6,7 };
-    out = [_]u8 { 0x58, 0xED, 0x24, 0x8F, 0x77, 0xF6, 0xB1, 0x9E, };
+    key = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };
+    inData = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7 };
+    out = [_]u8{ 0x58, 0xED, 0x24, 0x8F, 0x77, 0xF6, 0xB1, 0x9E };
     des.des3EncryptEcb(key, &inData, encryptedData);
     des.des3DecryptEcb(key, encryptedData, decryptedData);
     testing.expectEqualSlices(u8, encryptedData, &out);
@@ -1673,14 +1673,14 @@ test "DES CBC crypt" {
     defer allocator.free(encryptedData);
     defer allocator.free(decryptedData);
 
-    var key = [8]u8{ 0,1,2,3,4,5,6,7 };
-    var iv = [8]u8{ 0,1,2,3,4,5,6,7 };
+    var key = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 };
+    var iv = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 };
     const inData = [_]u8{
-        0,1,2,3,4,5,6,7,
-        0,1,2,3,4,5,6,7,
-        0,1,2,3,4,5,6,7
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
     };
-    var out = [_]u8 {
+    var out = [_]u8{
         0xA5, 0x17, 0x3A, 0xD5, 0x95, 0x7B, 0x43, 0x70,
         0x7D, 0x35, 0xF8, 0x54, 0x99, 0x82, 0x1B, 0xD6,
         0xE5, 0x29, 0x49, 0x4E, 0x8F, 0x40, 0x13, 0xAC,
@@ -1698,14 +1698,14 @@ test "3DES CBC crypt" {
     defer allocator.free(encryptedData);
     defer allocator.free(decryptedData);
 
-    var key = [_]u8 { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 };
-    var iv = [8]u8{ 0,1,2,3,4,5,6,7 };
+    var key = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };
+    var iv = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 };
     const inData = [_]u8{
-        0,1,2,3,4,5,6,7,
-        0,1,2,3,4,5,6,7,
-        0,1,2,3,4,5,6,7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
     };
-    var out = [_]u8 {
+    var out = [_]u8{
         0x89, 0x4B, 0xC3, 0x08, 0x54, 0x26, 0xA4, 0x41,
         0x73, 0x2D, 0xCE, 0x85, 0x7B, 0x7D, 0x77, 0xBC,
         0xE1, 0x9B, 0xFA, 0x3A, 0x6E, 0x0C, 0x48, 0x81,

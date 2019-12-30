@@ -15,16 +15,16 @@ const ip = [64]u8{
     6, 14, 22, 30, 38, 46, 54, 62,
     4, 12, 20, 28, 36, 44, 52, 60,
     2, 10, 18, 26, 34, 42, 50, 58,
-    0, 8, 16, 24, 32, 40, 48, 56,
+    0, 8,  16, 24, 32, 40, 48, 56,
     7, 15, 23, 31, 39, 47, 55, 63,
     5, 13, 21, 29, 37, 45, 53, 61,
     3, 11, 19, 27, 35, 43, 51, 59,
-    1, 9, 17, 25, 33, 41, 49, 57,
+    1, 9,  17, 25, 33, 41, 49, 57,
 };
 
 const fp = [64]u8{
-    24, 56, 16, 48, 8, 40, 0, 32,
-    25, 57, 17, 49, 9, 41, 1, 33,
+    24, 56, 16, 48, 8,  40, 0, 32,
+    25, 57, 17, 49, 9,  41, 1, 33,
     26, 58, 18, 50, 10, 42, 2, 34,
     27, 59, 19, 51, 11, 43, 3, 35,
     28, 60, 20, 52, 12, 44, 4, 36,
@@ -34,19 +34,19 @@ const fp = [64]u8{
 };
 
 const pc1 = [56]u8{
-    7, 15, 23, 31, 39, 47, 55, 63,
-    6, 14, 22, 30, 38, 46, 54, 62,
-    5, 13, 21, 29, 37, 45, 53, 61,
-    4, 12, 20, 28, 1, 9, 17, 25,
-    33, 41, 49, 57, 2, 10, 18, 26,
-    34, 42, 50, 58, 3, 11, 19, 27,
+    7,  15, 23, 31, 39, 47, 55, 63,
+    6,  14, 22, 30, 38, 46, 54, 62,
+    5,  13, 21, 29, 37, 45, 53, 61,
+    4,  12, 20, 28, 1,  9,  17, 25,
+    33, 41, 49, 57, 2,  10, 18, 26,
+    34, 42, 50, 58, 3,  11, 19, 27,
     35, 43, 51, 59, 36, 44, 52, 60,
 };
 
 const pc2 = [48]u8{
-    13, 16, 10, 23, 0, 4, 2, 27,
-    14, 5, 20, 9, 22, 18, 11, 3,
-    25, 7, 15, 6, 26, 19, 12, 1,
+    13, 16, 10, 23, 0,  4,  2,  27,
+    14, 5,  20, 9,  22, 18, 11, 3,
+    25, 7,  15, 6,  26, 19, 12, 1,
     40, 51, 30, 36, 46, 54, 29, 39,
     50, 44, 32, 47, 43, 48, 38, 55,
     33, 52, 45, 41, 49, 35, 28, 31,
@@ -154,7 +154,6 @@ fn expand(half: u32) u48 {
     out ^= (@intCast(u48, half) & 1) << 47;
     return out;
 }
-
 
 // Bugged in --release-fast with this type signature, see https://github.com/ziglang/zig/issues/3980
 // fn permuteBits(long: var, indices: []const math.Log2Int(@TypeOf(long))) @TypeOf(long) {
@@ -366,13 +365,7 @@ pub fn desDecryptEcb(key: [8]u8, inData: []const u8, outData: []u8) void {
     }
 }
 
-fn des3EncryptEcbWithSubkeys(
-    keys1: [16]u48,
-    keys2: [16]u48,
-    keys3: [16]u48,
-    inData: []const u8,
-    outData: []u8
-) void {
+fn des3EncryptEcbWithSubkeys(keys1: [16]u48, keys2: [16]u48, keys3: [16]u48, inData: []const u8, outData: []u8) void {
     var i: u64 = 0;
     var offset: u64 = 0;
     while (offset <= inData.len - 8) {
@@ -396,13 +389,7 @@ pub fn des3EncryptEcb(key: [24]u8, inData: []const u8, outData: []u8) void {
     des3EncryptEcbWithSubkeys(keys1, keys2, keys3, inData, outData);
 }
 
-fn des3DecryptEcbWithSubkeys(
-    keys1: [16]u48,
-    keys2: [16]u48,
-    keys3: [16]u48,
-    inData: []const u8,
-    outData: []u8
-) void {
+fn des3DecryptEcbWithSubkeys(keys1: [16]u48, keys2: [16]u48, keys3: [16]u48, inData: []const u8, outData: []u8) void {
     var i: u64 = 0;
     var offset: u64 = 0;
     while (offset <= inData.len - 8) {
