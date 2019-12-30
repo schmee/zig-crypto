@@ -348,7 +348,6 @@ pub fn desEncryptEcb(key: [8]u8, inData: []const u8, outData: []u8) void {
 }
 
 pub fn desDecryptEcb(key: [8]u8, inData: []const u8, outData: []u8) void {
-    assert(key.len == 8);
     assert(inData.len % 8 == 0);
 
     var i: u64 = 0;
