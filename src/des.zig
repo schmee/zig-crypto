@@ -183,7 +183,7 @@ fn sbox(long: u48) u32 {
 }
 
 pub fn desRounds(keys: [16]u48, data: u64, comptime encrypt: bool) [8]u8 {
-    var perm = permuteBits(data, ip[0..]);
+    var perm = permuteBits(data, &ip);
 
     var i: u8 = 0;
     var left = @truncate(u32, perm & 0xFFFFFFFF);
@@ -203,15 +203,15 @@ pub fn desRounds(keys: [16]u48, data: u64, comptime encrypt: bool) [8]u8 {
     var out: u64 = left;
     out <<= 32;
     out ^= right;
-    out = permuteBits(out, fp[0..]);
+    out = permuteBits(out, &fp);
 
     return mem.asBytes(&out).*;
 }
 
 pub fn subkeys(keyBytes: []const u8) [16]u48 {
     const size: u6 = math.maxInt(u6);
-    const key = mem.readIntSliceBig(u64, keyBytes[0..]);
-    var perm = @truncate(u56, permuteBits(key, pc1[0..]));
+    const key = mem.readIntSliceBig(u64, keyBytes);
+    var perm = @truncate(u56, permuteBits(key, &pc1));
 
     var left: u28 = @truncate(u28, perm & 0xfffffff);
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
@@ -227,7 +227,7 @@ pub fn subkeys(keyBytes: []const u8) [16]u48 {
         out <<= 28;
         out ^= left;
 
-        subkey = @truncate(u48, permuteBits(out, pc2[0..]));
+        subkey = @truncate(u48, permuteBits(out, &pc2));
         keys[i] = subkey;
     }
 
@@ -249,7 +249,7 @@ pub fn desEncryptCbc(key: [8]u8, iv: [8]u8, inData: []const u8, outData: []u8) v
         for (cipher) |c, j| {
             outData[(i * 8) + (7 - j)] = c;
         }
-        block = mem.readIntSliceLittle(u64, cipher[0..]);
+        block = mem.readIntSliceLittle(u64, &cipher);
         i += 1;
         offset += 8;
     }
@@ -283,21 +283,21 @@ pub fn des3EncryptCbc(key: [24]u8, iv: [8]u8, inData: []const u8, outData: []u8)
     var buf: [8]u8 = undefined;
     var out: [8]u8 = undefined;
     var block: [8]u8 = undefined;
-    mem.copy(u8, block[0..], iv[0..]);
+    mem.copy(u8, &block, &iv);
 
     const keys1 = subkeys(key[0..8]);
     const keys2 = subkeys(key[8..16]);
     const keys3 = subkeys(key[16..]);
     while (offset <= inData.len - 8) {
-        mem.copy(u8, buf[0..], inData[offset..(offset + 8)]);
+        mem.copy(u8, &buf, inData[offset..(offset + 8)]);
         for (buf) |*p, j| {
             p.* ^= block[j];
         }
-        des3EncryptEcbWithSubkeys(keys1, keys2, keys3, buf[0..], out[0..]);
+        des3EncryptEcbWithSubkeys(keys1, keys2, keys3, &buf, &out);
         for (out) |c, j| {
             outData[(i * 8) + j] = c;
         }
-        mem.copy(u8, block[0..], out[0..]);
+        mem.copy(u8, &block, &out);
         i += 1;
         offset += 8;
     }
@@ -311,21 +311,21 @@ pub fn des3DecryptCbc(key: [24]u8, iv: [8]u8, inData: []const u8, outData: []u8)
     var buf: [8]u8 = undefined;
     var out: [8]u8 = undefined;
     var block: [8]u8 = undefined;
-    mem.copy(u8, block[0..], iv[0..]);
+    mem.copy(u8, &block, &iv);
 
     const keys1 = subkeys(key[0..8]);
     const keys2 = subkeys(key[8..16]);
     const keys3 = subkeys(key[16..]);
     while (offset <= inData.len - 8) {
-        mem.copy(u8, buf[0..], inData[offset..(offset + 8)]);
-        des3DecryptEcbWithSubkeys(keys1, keys2, keys3, buf[0..], out[0..]);
+        mem.copy(u8, &buf, inData[offset..(offset + 8)]);
+        des3DecryptEcbWithSubkeys(keys1, keys2, keys3, &buf, &out);
         for (out) |*p, j| {
             p.* ^= block[j];
         }
         for (out) |c, j| {
             outData[(i * 8) + j] = c;
         }
-        mem.copy(u8, block[0..], buf[0..]);
+        mem.copy(u8, &block, &buf);
         i += 1;
         offset += 8;
     }
@@ -378,8 +378,8 @@ fn des3EncryptEcbWithSubkeys(
     while (offset <= inData.len - 8) {
         const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
         var cipher = desRounds(keys1, plain, true);
-        cipher = desRounds(keys2, mem.readIntSliceLittle(u64, cipher[0..]), false);
-        cipher = desRounds(keys3, mem.readIntSliceLittle(u64, cipher[0..]), true);
+        cipher = desRounds(keys2, mem.readIntSliceLittle(u64, &cipher), false);
+        cipher = desRounds(keys3, mem.readIntSliceLittle(u64, &cipher), true);
         for (cipher) |c, j| {
             outData[(i * 8) + (7 - j)] = c;
         }
@@ -408,8 +408,8 @@ fn des3DecryptEcbWithSubkeys(
     while (offset <= inData.len - 8) {
         const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
         var cipher = desRounds(keys3, plain, false);
-        cipher = desRounds(keys2, mem.readIntSliceLittle(u64, cipher[0..]), true);
-        cipher = desRounds(keys1, mem.readIntSliceLittle(u64, cipher[0..]), false);
+        cipher = desRounds(keys2, mem.readIntSliceLittle(u64, &cipher), true);
+        cipher = desRounds(keys1, mem.readIntSliceLittle(u64, &cipher), false);
         for (cipher) |c, j| {
             outData[(i * 8) + (7 - j)] = c;
         }
