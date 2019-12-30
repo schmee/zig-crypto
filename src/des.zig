@@ -284,19 +284,22 @@ pub fn des3EncryptCbc(key: []const u8, iv: []const u8, inData: []const u8, outDa
     assert(iv.len == 8);
     assert(inData.len % 8 == 0);
 
-
     var i: u64 = 0;
     var offset: u64 = 0;
-    var buf = [_]u8{0} ** 8;
-    var out = [_]u8{0} ** 8;
-    var block = [_]u8{0} ** 8;
+    var buf: [8]u8 = undefined;
+    var out: [8]u8 = undefined;
+    var block: [8]u8 = undefined;
     mem.copy(u8, block[0..], iv[0..]);
+
+    const key1 = subkeys(key[0..8]);
+    const key2 = subkeys(key[8..16]);
+    const key3 = subkeys(key[16..]);
     while (offset <= inData.len - 8) {
         mem.copy(u8, buf[0..], inData[offset..(offset + 8)]);
         for (buf) |*p, j| {
             p.* ^= block[j];
         }
-        des3EncryptEcb(key, buf[0..], out[0..]);
+        des3EncryptEcbWithSubkeys(key1[0..], key2[0..], key3[0..], buf[0..], out[0..]);
         for (out) |c, j| {
             outData[(i * 8) + j] = c;
         }
@@ -311,17 +314,19 @@ pub fn des3DecryptCbc(key: []const u8, iv: []const u8, inData: []const u8, outDa
     assert(iv.len == 8);
     assert(inData.len % 8 == 0);
 
-
     var i: u64 = 0;
     var offset: u64 = 0;
-    var buf = [_]u8{0} ** 8;
-    var out = [_]u8{0} ** 8;
-    var block = [_]u8{0} ** 8;
+    var buf: [8]u8 = undefined;
+    var out: [8]u8 = undefined;
+    var block: [8]u8 = undefined;
     mem.copy(u8, block[0..], iv[0..]);
+
+    const key1 = subkeys(key[0..8]);
+    const key2 = subkeys(key[8..16]);
+    const key3 = subkeys(key[16..]);
     while (offset <= inData.len - 8) {
         mem.copy(u8, buf[0..], inData[offset..(offset + 8)]);
-        // TODO: Pass in the subkeys instead of the key bytes here
-        des3DecryptEcb(key, buf[0..], out[0..]);
+        des3DecryptEcbWithSubkeys(key1[0..], key2[0..], key3[0..], buf[0..], out[0..]);
         for (out) |*p, j| {
             p.* ^= block[j];
         }
@@ -334,13 +339,13 @@ pub fn des3DecryptCbc(key: []const u8, iv: []const u8, inData: []const u8, outDa
     }
 }
 
-pub fn desEncryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) void {
-    assert(keyBytes.len == 8);
+pub fn desEncryptEcb(key: []const u8, inData: []const u8, outData: []u8) void {
+    assert(key.len == 8);
     assert(inData.len % 8 == 0);
 
     var i: u64 = 0;
     var offset: u64 = 0;
-    const keys = subkeys(keyBytes);
+    const keys = subkeys(key);
     while (offset <= inData.len - 8) {
         const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
         const cipher = desRounds(keys[0..], plain, true);
@@ -352,13 +357,13 @@ pub fn desEncryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) vo
     }
 }
 
-pub fn desDecryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) void {
-    assert(keyBytes.len == 8);
+pub fn desDecryptEcb(key: []const u8, inData: []const u8, outData: []u8) void {
+    assert(key.len == 8);
     assert(inData.len % 8 == 0);
 
     var i: u64 = 0;
     var offset: u64 = 0;
-    const keys = subkeys(keyBytes);
+    const keys = subkeys(key);
     while (offset <= inData.len - 8) {
         const cipher: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
         const plain = desRounds(keys[0..], cipher, false);
@@ -370,20 +375,51 @@ pub fn desDecryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) vo
     }
 }
 
-pub fn des3EncryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) void {
-    assert(keyBytes.len == 24);
-    assert(inData.len % 8 == 0);
-
+fn des3EncryptEcbWithSubkeys(
+    key1: []const u48,
+    key2: []const u48,
+    key3: []const u48,
+    inData: []const u8,
+    outData: []u8
+) void {
     var i: u64 = 0;
     var offset: u64 = 0;
-    const keys1 = subkeys(keyBytes[0..8]);
-    const keys2 = subkeys(keyBytes[8..16]);
-    const keys3 = subkeys(keyBytes[16..]);
     while (offset <= inData.len - 8) {
         const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
-        var cipher = desRounds(keys1[0..], plain, true);
-        cipher = desRounds(keys2[0..], mem.readIntSliceLittle(u64, cipher[0..]), false);
-        cipher = desRounds(keys3[0..], mem.readIntSliceLittle(u64, cipher[0..]), true);
+        var cipher = desRounds(key1[0..], plain, true);
+        cipher = desRounds(key2[0..], mem.readIntSliceLittle(u64, cipher[0..]), false);
+        cipher = desRounds(key3[0..], mem.readIntSliceLittle(u64, cipher[0..]), true);
+        for (cipher) |c, j| {
+            outData[(i * 8) + (7 - j)] = c;
+        }
+        i += 1;
+        offset += 8;
+    }
+}
+pub fn des3EncryptEcb(key: []const u8, inData: []const u8, outData: []u8) void {
+    assert(key.len == 24);
+    assert(inData.len % 8 == 0);
+
+    const key1 = subkeys(key[0..8]);
+    const key2 = subkeys(key[8..16]);
+    const key3 = subkeys(key[16..]);
+    des3EncryptEcbWithSubkeys(key1[0..], key2[0..], key3[0..], inData, outData);
+}
+
+fn des3DecryptEcbWithSubkeys(
+    key1: []const u48,
+    key2: []const u48,
+    key3: []const u48,
+    inData: []const u8,
+    outData: []u8
+) void {
+    var i: u64 = 0;
+    var offset: u64 = 0;
+    while (offset <= inData.len - 8) {
+        const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
+        var cipher = desRounds(key3[0..], plain, false);
+        cipher = desRounds(key2[0..], mem.readIntSliceLittle(u64, cipher[0..]), true);
+        cipher = desRounds(key1[0..], mem.readIntSliceLittle(u64, cipher[0..]), false);
         for (cipher) |c, j| {
             outData[(i * 8) + (7 - j)] = c;
         }
@@ -392,24 +428,12 @@ pub fn des3EncryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) v
     }
 }
 
-pub fn des3DecryptEcb(keyBytes: []const u8, inData: []const u8, outData: []u8) void {
-    assert(keyBytes.len == 24);
+pub fn des3DecryptEcb(key: []const u8, inData: []const u8, outData: []u8) void {
+    assert(key.len == 24);
     assert(inData.len % 8 == 0);
 
-    var i: u64 = 0;
-    var offset: u64 = 0;
-    const keys1 = subkeys(keyBytes[0..8]);
-    const keys2 = subkeys(keyBytes[8..16]);
-    const keys3 = subkeys(keyBytes[16..]);
-    while (offset <= inData.len - 8) {
-        const plain: u64 = mem.readIntSliceBig(u64, inData[offset..(offset + 8)]);
-        var cipher = desRounds(keys3[0..], plain, false);
-        cipher = desRounds(keys2[0..], mem.readIntSliceLittle(u64, cipher[0..]), true);
-        cipher = desRounds(keys1[0..], mem.readIntSliceLittle(u64, cipher[0..]), false);
-        for (cipher) |c, j| {
-            outData[(i * 8) + (7 - j)] = c;
-        }
-        i += 1;
-        offset += 8;
-    }
+    const key1 = subkeys(key[0..8]);
+    const key2 = subkeys(key[8..16]);
+    const key3 = subkeys(key[16..]);
+    des3DecryptEcbWithSubkeys(key1[0..], key2[0..], key3[0..], inData, outData);
 }
