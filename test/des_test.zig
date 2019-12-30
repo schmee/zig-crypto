@@ -1597,6 +1597,7 @@ test "encrypt random data with ECB" {
     defer allocator.free(contents);
 
     var encryptedData = try allocator.alloc(u8, contents.len);
+    defer allocator.free(encryptedData);
     des.desEncryptEcb(testKey, contents[0..], encryptedData);
 
     var digest = Sha1.init();
@@ -1617,9 +1618,11 @@ test "decrypt random data with ECB" {
 
     var encryptedData = try allocator.alloc(u8, contents.len);
     des.desEncryptEcb(testKey, contents[0..], encryptedData);
+    defer allocator.free(encryptedData);
 
     var decryptedBytes = try allocator.alloc(u8, contents.len);
     des.desDecryptEcb(testKey, encryptedData[0..], decryptedBytes);
+    defer allocator.free(decryptedBytes);
 
     testing.expectEqualSlices(u8, contents[0..], decryptedBytes[0..]);
 }
