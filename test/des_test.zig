@@ -1620,11 +1620,11 @@ test "decrypt random data with ECB" {
     des.desEncryptEcb(testKey, contents[0..], encryptedData);
     defer allocator.free(encryptedData);
 
-    var decryptedBytes = try allocator.alloc(u8, contents.len);
-    des.desDecryptEcb(testKey, encryptedData[0..], decryptedBytes);
-    defer allocator.free(decryptedBytes);
+    var decryptedData = try allocator.alloc(u8, contents.len);
+    des.desDecryptEcb(testKey, encryptedData[0..], decryptedData);
+    defer allocator.free(decryptedData);
 
-    testing.expectEqualSlices(u8, contents[0..], decryptedBytes[0..]);
+    testing.expectEqualSlices(u8, contents[0..], decryptedData[0..]);
 }
 
 test "3DES ECB crypt" {
