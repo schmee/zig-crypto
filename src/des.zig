@@ -11,7 +11,7 @@ const warn = @import("std").debug.warn;
 // TODO: Use this instead of hardcoded 8 everywhere
 pub const block_size: u8 = 8;
 
-const ip = [64]u6{
+const ip = [64]u8{
     6, 14, 22, 30, 38, 46, 54, 62,
     4, 12, 20, 28, 36, 44, 52, 60,
     2, 10, 18, 26, 34, 42, 50, 58,
@@ -22,7 +22,7 @@ const ip = [64]u6{
     1, 9, 17, 25, 33, 41, 49, 57,
 };
 
-const fp = [64]u6{
+const fp = [64]u8{
     24, 56, 16, 48, 8, 40, 0, 32,
     25, 57, 17, 49, 9, 41, 1, 33,
     26, 58, 18, 50, 10, 42, 2, 34,
@@ -33,7 +33,7 @@ const fp = [64]u6{
     31, 63, 23, 55, 15, 47, 7, 39,
 };
 
-const pc1 = [56]u6{
+const pc1 = [56]u8{
     7, 15, 23, 31, 39, 47, 55, 63,
     6, 14, 22, 30, 38, 46, 54, 62,
     5, 13, 21, 29, 37, 45, 53, 61,
@@ -43,7 +43,7 @@ const pc1 = [56]u6{
     35, 43, 51, 59, 36, 44, 52, 60,
 };
 
-const pc2 = [48]u6{
+const pc2 = [48]u8{
     13, 16, 10, 23, 0, 4, 2, 27,
     14, 5, 20, 9, 22, 18, 11, 3,
     25, 7, 15, 6, 26, 19, 12, 1,
@@ -155,13 +155,16 @@ fn expand(half: u32) u48 {
     return out;
 }
 
-fn permuteBits(long: var, indices: []const math.Log2Int(@TypeOf(long))) @TypeOf(long) {
+
+// Bugged in --release-fast with this type signature, see https://github.com/ziglang/zig/issues/3980
+// fn permuteBits(long: var, indices: []const math.Log2Int(@TypeOf(long))) @TypeOf(long) {
+fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
     comptime const T = @TypeOf(long);
     comptime const TL = math.Log2Int(T);
 
     var out: T = 0;
     for (indices) |x, i| {
-        out ^= (((long >> x) & 1) << @intCast(TL, i));
+        out ^= (((long >> @intCast(u6, x)) & 1) << @intCast(TL, i));
     }
     return out;
 }
