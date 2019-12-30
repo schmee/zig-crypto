@@ -9,12 +9,14 @@ const std = @import("std");
 const testing = @import("std").testing;
 const warn = @import("std").debug.warn;
 
-fn desEncryptTest(key: u64, data: u64) u64 {
-    var asdf = key;
-    var keyBytes = mem.asBytes(&asdf);
+fn desEncryptTest(keyLong: u64, data: u64) u64 {
+    var mutableKey = keyLong;
+    var keyBytes = mem.asBytes(&mutableKey);
     mem.reverse(u8, keyBytes[0..]);
-    var keys = des.subkeys(keyBytes[0..]);
-    const encryptedBytes = des.desRounds(keys[0..], data, true);
+    const key = keyBytes.*;
+
+    var keys = des.subkeys(&key);
+    const encryptedBytes = des.desRounds(keys, data, true);
     return mem.readIntLittle(u64, &encryptedBytes);
 }
 
@@ -795,12 +797,14 @@ test "test vectors ECB encrypt" {
     expectEqual(desEncryptTest(0x2BD6459F82C5B300, 0xB10F843097A0F932), 0xEA024714AD5C4D84);
 }
 
-fn desDecryptTest(key: u64, data: u64) u64 {
-    var asdf = key;
-    var keyBytes = mem.asBytes(&asdf);
+fn desDecryptTest(keyLong: u64, data: u64) u64 {
+    var mutableKey = keyLong;
+    var keyBytes = mem.asBytes(&mutableKey);
     mem.reverse(u8, keyBytes[0..]);
-    var keys = des.subkeys(keyBytes);
-    const plainBytes = des.desRounds(keys[0..], data, false);
+    const key = keyBytes.*;
+
+    var keys = des.subkeys(&key);
+    const plainBytes = des.desRounds(keys, data, false);
     return mem.readIntLittle(u64, &plainBytes);
 }
 
@@ -1590,15 +1594,17 @@ pub fn assertEqual(comptime expected: []const u8, input: []const u8) void {
 
 test "encrypt random data with ECB" {
     var keyLong: u64 = 0x133457799BBCDFF1;
-    var testKey = mem.asBytes(&keyLong);
-    mem.reverse(u8, testKey[0..]);
+    var keyBytes = mem.asBytes(&keyLong);
+    mem.reverse(u8, keyBytes[0..]);
+    const key = keyBytes.*;
+
     var allocator = std.heap.page_allocator;
     const contents = try std.fs.cwd().readFileAlloc(allocator, "test/random_test_data_small.bin", 1000 * 1000 * 1000);
     defer allocator.free(contents);
 
     var encryptedData = try allocator.alloc(u8, contents.len);
     defer allocator.free(encryptedData);
-    des.desEncryptEcb(testKey, contents[0..], encryptedData);
+    des.desEncryptEcb(key, contents[0..], encryptedData);
 
     var digest = Sha1.init();
     digest.update(encryptedData);
@@ -1610,18 +1616,20 @@ test "encrypt random data with ECB" {
 
 test "decrypt random data with ECB" {
     var keyLong: u64 = 0x133457799BBCDFF1;
-    var testKey = mem.asBytes(&keyLong);
-    mem.reverse(u8, testKey[0..]);
+    var mutableKey = mem.asBytes(&keyLong);
+    mem.reverse(u8, mutableKey[0..]);
+    const key = mutableKey.*;
+
     var allocator = std.heap.page_allocator;
     const contents = try std.fs.cwd().readFileAlloc(allocator, "test/random_test_data_small.bin", 1000 * 1000 * 1000);
     defer allocator.free(contents);
 
     var encryptedData = try allocator.alloc(u8, contents.len);
-    des.desEncryptEcb(testKey, contents[0..], encryptedData);
+    des.desEncryptEcb(key, contents[0..], encryptedData);
     defer allocator.free(encryptedData);
 
     var decryptedData = try allocator.alloc(u8, contents.len);
-    des.desDecryptEcb(testKey, encryptedData[0..], decryptedData);
+    des.desDecryptEcb(key, encryptedData[0..], decryptedData);
     defer allocator.free(decryptedData);
 
     testing.expectEqualSlices(u8, contents[0..], decryptedData[0..]);
@@ -1637,23 +1645,23 @@ test "3DES ECB crypt" {
 
     var key = [_]u8 {0} ** 24;
     var out = [_]u8 { 0x8C, 0xA6, 0x4D, 0xE9, 0xC1, 0xB1, 0x23, 0xA7 };
-    des.des3EncryptEcb(key[0..], inData[0..], encryptedData[0..]);
-    des.des3DecryptEcb(key[0..], encryptedData[0..], decryptedData[0..]);
+    des.des3EncryptEcb(key, inData[0..], encryptedData[0..]);
+    des.des3DecryptEcb(key, encryptedData[0..], decryptedData[0..]);
     testing.expectEqualSlices(u8, encryptedData[0..], out[0..]);
     testing.expectEqualSlices(u8, decryptedData[0..], inData[0..]);
 
     key = [_]u8 { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 };
     out = [_]u8 { 0x89, 0x4B, 0xC3, 0x08, 0x54, 0x26, 0xA4, 0x41, };
-    des.des3EncryptEcb(key[0..], inData[0..], encryptedData[0..]);
-    des.des3DecryptEcb(key[0..], encryptedData[0..], decryptedData[0..]);
+    des.des3EncryptEcb(key, inData[0..], encryptedData[0..]);
+    des.des3DecryptEcb(key, encryptedData[0..], decryptedData[0..]);
     testing.expectEqualSlices(u8, encryptedData[0..], out[0..]);
     testing.expectEqualSlices(u8, decryptedData[0..], inData[0..]);
 
     key = [_]u8 { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 };
     inData = [_]u8{ 0,1,2,3,4,5,6,7 };
     out = [_]u8 { 0x58, 0xED, 0x24, 0x8F, 0x77, 0xF6, 0xB1, 0x9E, };
-    des.des3EncryptEcb(key[0..], inData[0..], encryptedData[0..]);
-    des.des3DecryptEcb(key[0..], encryptedData[0..], decryptedData[0..]);
+    des.des3EncryptEcb(key, inData[0..], encryptedData[0..]);
+    des.des3DecryptEcb(key, encryptedData[0..], decryptedData[0..]);
     testing.expectEqualSlices(u8, encryptedData[0..], out[0..]);
     testing.expectEqualSlices(u8, decryptedData[0..], inData[0..]);
 }
@@ -1677,8 +1685,8 @@ test "DES CBC crypt" {
         0x7D, 0x35, 0xF8, 0x54, 0x99, 0x82, 0x1B, 0xD6,
         0xE5, 0x29, 0x49, 0x4E, 0x8F, 0x40, 0x13, 0xAC,
     };
-    des.desEncryptCbc(key[0..], iv[0..], inData[0..], encryptedData[0..]);
-    des.desDecryptCbc(key[0..], iv[0..], encryptedData[0..], decryptedData[0..]);
+    des.desEncryptCbc(key, iv, inData[0..], encryptedData[0..]);
+    des.desDecryptCbc(key, iv, encryptedData[0..], decryptedData[0..]);
     testing.expectEqualSlices(u8, encryptedData[0..], out[0..]);
     testing.expectEqualSlices(u8, decryptedData[0..], inData[0..]);
 }
@@ -1702,8 +1710,8 @@ test "3DES CBC crypt" {
         0x73, 0x2D, 0xCE, 0x85, 0x7B, 0x7D, 0x77, 0xBC,
         0xE1, 0x9B, 0xFA, 0x3A, 0x6E, 0x0C, 0x48, 0x81,
     };
-    des.des3EncryptCbc(key[0..], iv[0..], inData[0..], encryptedData[0..]);
-    des.des3DecryptCbc(key[0..], iv[0..], encryptedData[0..], decryptedData[0..]);
+    des.des3EncryptCbc(key, iv, inData[0..], encryptedData[0..]);
+    des.des3DecryptCbc(key, iv, encryptedData[0..], decryptedData[0..]);
     testing.expectEqualSlices(u8, encryptedData[0..], out[0..]);
     testing.expectEqualSlices(u8, decryptedData[0..], inData[0..]);
 }
