@@ -1,8 +1,6 @@
-const std = @import("std");
 const assert = @import("std").debug.assert;
 const math = @import("std").math;
 const mem = @import("std").mem;
-const warn = @import("std").debug.warn;
 
 // TODO: Figure out the endianness stuff, it's a total mess right now
 // TODO: Figure out the endianness stuff, it's a total mess right now
@@ -146,7 +144,7 @@ fn expand(half: u32) u48 {
     const mask: u8 = (1 << 6) - 1;
 
     var i: u5 = 0;
-    var out: u48 = std.math.rotl(u32, half, 1) & mask;
+    var out: u48 = math.rotl(u32, half, 1) & mask;
     while (i < 7) : (i += 1) {
         const piece: u48 = (half >> (3 + (4 * i))) & mask;
         out ^= @truncate(u48, piece << 6 * @intCast(u6, i + 1));
@@ -219,8 +217,8 @@ pub fn subkeys(keyBytes: []const u8) [16]u48 {
     var keys: [16]u48 = undefined;
 
     while (i < 16) : (i += 1) {
-        left = std.math.rotr(u28, left, shifts[i]);
-        right = std.math.rotr(u28, right, shifts[i]);
+        left = math.rotr(u28, left, shifts[i]);
+        right = math.rotr(u28, right, shifts[i]);
 
         var out: u56 = right;
         out <<= 28;

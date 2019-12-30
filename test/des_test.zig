@@ -2,12 +2,10 @@ const Sha1 = @import("std").crypto.Sha1;
 const des = @import("../src/des.zig");
 const expectEqual = @import("std").testing.expectEqual;
 const fmt = @import("std").fmt;
-const io = @import("std").io;
 const mem = @import("std").mem;
 const os = @import("std").os;
 const std = @import("std");
 const testing = @import("std").testing;
-const warn = @import("std").debug.warn;
 
 fn desEncryptTest(keyLong: u64, data: u64) u64 {
     const reversedKey = @byteSwap(u64, keyLong);
