@@ -2,7 +2,6 @@ const assert = @import("std").debug.assert;
 const math = @import("std").math;
 const mem = @import("std").mem;
 
-// TODO: Use this instead of hardcoded 8 everywhere
 pub const block_size: u8 = 8;
 
 const ip = [64]u8{
@@ -272,14 +271,14 @@ pub fn desCryptEcb(keys: var, inData: []const u8, outData: []u8, encrypt: bool) 
     var offset: u64 = 0;
     var buf: [8]u8 = undefined;
 
-    while (offset <= inData.len - 8) {
-        mem.copy(u8, &buf, inData[offset..(offset + 8)]);
+    while (offset <= inData.len - block_size) {
+        mem.copy(u8, &buf, inData[offset..(offset + block_size)]);
         var block: [8]u8 = doOneRound(keys, buf, encrypt);
         for (block) |p, j| {
-            outData[(i * 8) + j] = p;
+            outData[(i * block_size) + j] = p;
         }
         i += 1;
-        offset += 8;
+        offset += block_size;
     }
 }
 
@@ -301,8 +300,8 @@ pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, encr
     var newBlock: [8]u8 = undefined;
     var block: [8]u8 = iv;
 
-    while (offset <= inData.len - 8) {
-        mem.copy(u8, &buf, inData[offset..(offset + 8)]);
+    while (offset <= inData.len - block_size) {
+        mem.copy(u8, &buf, inData[offset..(offset + block_size)]);
         if (encrypt) {
             for (buf) |*p, j| {
                 p.* ^= block[j];
@@ -317,10 +316,10 @@ pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, encr
             block = buf;
         }
         for (newBlock) |c, j| {
-            outData[(i * 8) + j] = c;
+            outData[(i * block_size) + j] = c;
         }
         i += 1;
-        offset += 8;
+        offset += block_size;
     }
 }
 
