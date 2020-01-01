@@ -290,7 +290,7 @@ pub fn desDecryptEcb(keys: var, inData: []const u8, outData: []u8) void {
     desCryptEcb(keys, inData, outData, false);
 }
 
-pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, encrypt: bool) void {
+fn desCryptCbcInline(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, comptime encrypt: bool) void {
     assert(inData.len % 8 == 0);
     assert(outData.len >= inData.len);
 
@@ -323,10 +323,18 @@ pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, encr
     }
 }
 
+pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, encrypt: bool) void {
+    if (encrypt) {
+        desCryptCbcInline(keys, iv, inData, outData, true);
+    } else {
+        desCryptCbcInline(keys, iv, inData, outData, false);
+    }
+}
+
 pub fn desEncryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    desCryptCbc(keys, iv, inData, outData, true);
+    desCryptCbcInline(keys, iv, inData, outData, true);
 }
 
 pub fn desDecryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    desCryptCbc(keys, iv, inData, outData, false);
+    desCryptCbcInline(keys, iv, inData, outData, false);
 }
