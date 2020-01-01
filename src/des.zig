@@ -175,7 +175,7 @@ fn sbox(long: u48) u32 {
     return out;
 }
 
-pub fn desRounds(keys: [16]u48, data: [8]u8, crypt_mode: CryptMode) [8]u8 {
+pub fn desRounds(keys: [16]u48, data: [8]u8, comptime crypt_mode: CryptMode) [8]u8 {
     var dataLong = mem.readIntSliceBig(u64, &data);
     var perm = permuteBits(dataLong, &ip);
 
@@ -245,7 +245,7 @@ pub fn des3Subkeys(key: [24]u8) [3][16]u48 {
     };
 }
 
-fn doOneRound(keys: var, inData: [8]u8, crypt_mode: CryptMode) [8]u8 {
+fn doOneRound(keys: var, inData: [8]u8, comptime crypt_mode: CryptMode) [8]u8 {
     var out: [8]u8 = undefined;
     switch (@TypeOf(keys)) {
         [16]u48 => {
@@ -271,7 +271,7 @@ fn doOneRound(keys: var, inData: [8]u8, crypt_mode: CryptMode) [8]u8 {
     return out;
 }
 
-pub fn desCryptEcb(keys: var, inData: []const u8, outData: []u8, crypt_mode: CryptMode) void {
+fn desCryptEcbInline(keys: var, inData: []const u8, outData: []u8, comptime crypt_mode: CryptMode) void {
     assert(inData.len % 8 == 0);
     assert(outData.len >= inData.len);
 
@@ -287,6 +287,13 @@ pub fn desCryptEcb(keys: var, inData: []const u8, outData: []u8, crypt_mode: Cry
         }
         i += 1;
         offset += block_size;
+    }
+}
+
+pub fn desCryptEcb(keys: var, inData: []const u8, outData: []u8, comptime crypt_mode: CryptMode) void {
+    switch (crypt_mode) {
+        .Encrypt => desCryptEcbInline(keys, inData, outData, .Encrypt),
+        .Decrypt => desCryptEcbInline(keys, inData, outData, .Decrypt)
     }
 }
 
