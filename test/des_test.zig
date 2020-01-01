@@ -7,23 +7,23 @@ const os = @import("std").os;
 const std = @import("std");
 const testing = @import("std").testing;
 
-fn desRoundsInt(keyLong: u64, dataLong: u64, comptime crypt_mode: des.CryptMode) u64 {
+fn desRoundsInt(comptime crypt_mode: des.CryptMode, keyLong: u64, dataLong: u64) u64 {
     const reversedKey = @byteSwap(u64, keyLong);
     const key = mem.asBytes(&reversedKey).*;
     const reversedData = @byteSwap(u64, dataLong);
     const data = mem.asBytes(&reversedData).*;
 
     var keys = des.desSubkeys(key);
-    const block = des.desRounds(keys, data, crypt_mode);
+    const block = des.desRounds(crypt_mode, keys, data);
     return mem.readIntBig(u64, &block);
 }
 
 fn desEncryptTest(keyLong: u64, dataLong: u64) u64 {
-    return desRoundsInt(keyLong, dataLong, .Encrypt);
+    return desRoundsInt(.Encrypt, keyLong, dataLong);
 }
 
 fn desDecryptTest(keyLong: u64, dataLong: u64) u64 {
-    return desRoundsInt(keyLong, dataLong, .Decrypt);
+    return desRoundsInt(.Decrypt, keyLong, dataLong);
 }
 
 // Taken from:
