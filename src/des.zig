@@ -290,7 +290,7 @@ fn desCryptEcbInline(comptime crypt_mode: CryptMode, keys: var, inData: []const 
     }
 }
 
-pub fn desCryptEcb(comptime crypt_mode: CryptMode, keys: var, inData: []const u8, outData: []u8) void {
+pub fn desCryptEcb(crypt_mode: CryptMode, keys: var, inData: []const u8, outData: []u8) void {
     switch (crypt_mode) {
         .Encrypt => desCryptEcbInline(.Encrypt, keys, inData, outData),
         .Decrypt => desCryptEcbInline(.Decrypt, keys, inData, outData)
@@ -341,7 +341,7 @@ fn desCryptCbcInline(comptime crypt_mode: CryptMode, keys: var, iv: [8]u8, inDat
     }
 }
 
-pub fn desCryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8, crypt_mode: CryptMode) void {
+pub fn desCryptCbc(crypt_mode: CryptMode, keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
     switch (crypt_mode) {
         .Encrypt => desCryptCbcInline(.Encrypt, keys, iv, inData, outData),
         .Decrypt => desCryptCbcInline(.Decrypt, keys, iv, inData, outData)
