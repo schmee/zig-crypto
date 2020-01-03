@@ -1,11 +1,12 @@
-const Sha1 = @import("std").crypto.Sha1;
-const des = @import("../src/des.zig");
-const expectEqual = @import("std").testing.expectEqual;
-const fmt = @import("std").fmt;
-const mem = @import("std").mem;
-const os = @import("std").os;
 const std = @import("std");
-const testing = @import("std").testing;
+const Sha1 = std.crypto.Sha1;
+const expectEqual = std.testing.expectEqual;
+const fmt = std.fmt;
+const mem = std.mem;
+const os = std.os;
+const testing = std.testing;
+
+const des = @import("zig-crypto").des;
 
 fn desRoundsInt(comptime crypt_mode: des.CryptMode, keyLong: u64, dataLong: u64) u64 {
     const reversedKey = @byteSwap(u64, keyLong);
