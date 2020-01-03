@@ -1,0 +1,37 @@
+version: 2
+jobs:
+  build:
+    branches:
+        only:
+          - circleci
+    docker:
+        - image: circleci/buildpack-deps:stretch-curl
+
+    steps:
+      - checkout
+
+      - run:
+          name: Get Zig version
+          command: |
+              export ZIG_URL=$(curl -s https://ziglang.org/download/index.json | jq -r '.master."x86_64-linux".tarball')
+              echo "export ZIG_URL=${ZIG_URL}" >> $BASH_ENV
+
+      - run:
+          name: Download and install Zig
+          command: |
+              echo $ZIG_URL
+              curl -O $ZIG_URL
+              mkdir zig
+              tar -C zig -xf ${ZIG_URL##*/} --strip 1
+              sudo cp -r zig/lib/zig /usr/local/lib
+              sudo cp zig/zig /usr/local/bin
+
+      - run:
+          name: Test debug
+          command: |
+              zig build test_debug |& cat
+
+      - run:
+          name: Test release-fast
+          command: |
+              zig build test_release_fast |& cat
