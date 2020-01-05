@@ -32,3 +32,8 @@ jobs:
           name: Test Release Fast
           command: |
               zig build test_release_fast |& cat
+
+      - run:
+          name: Test Release Small
+          command: |
+              zig build test_release_small |& cat

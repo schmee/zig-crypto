@@ -10,6 +10,12 @@ pub fn build(b: *Builder) void {
     test_release_fast.addPackagePath("zig-crypto", "zig_crypto.zig");
     b.step("test_release_fast", "Run all tests in release-fast mode").dependOn(&test_release_fast.step);
 
+    const test_release_small = b.addTest("test/des_test.zig");
+    test_release_small.setBuildMode(.ReleaseSmall);
+    test_release_small.addPackagePath("zig-crypto", "zig_crypto.zig");
+    b.step("test_release_small", "Run all tests in release-small mode").dependOn(&test_release_small.step);
+
     b.default_step.dependOn(&test_debug.step);
     b.default_step.dependOn(&test_release_fast.step);
+    b.default_step.dependOn(&test_release_small.step);
 }

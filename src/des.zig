@@ -1,4 +1,5 @@
 const assert = @import("std").debug.assert;
+const builtin = @import("std").builtin;
 const math = @import("std").math;
 const mem = @import("std").mem;
 
@@ -153,9 +154,49 @@ fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
     return out;
 }
 
+fn precomutePermutation(comptime permutation: []const u8) [8][256]u64 {
+    @setEvalBranchQuota(1000000);
+    comptime var i: u64 = 0;
+    comptime var out: [8][256]u64 = undefined;
+    inline while (i < 8) : (i += 1) {
+        comptime var j: u64 = 0;
+        inline while (j < 256) : (j += 1) {
+            var p: u64 = j << (i * 8);
+            out[i][j] = permuteBits(p, permutation);
+        }
+    }
+    return out;
+}
+
+fn permuteBitsPrecomputed(long: u64, comptime precomputedPerm: [8][256]u64) u64 {
+    var out: u64 = 0;
+    inline for (precomputedPerm) |p, i| {
+        out ^= p[@truncate(u8, long >> @intCast(u6, i * 8))];
+    }
+    return out;
+}
+
+const preip = precomutePermutation(&ip);
+
+fn initialPermutation(long: u64) u64 {
+    return if (builtin.mode == builtin.Mode.ReleaseSmall)
+        permuteBits(long, &ip)
+    else
+        permuteBitsPrecomputed(long, preip);
+}
+
+const prefp = precomutePermutation(&fp);
+
+fn finalPermutation(long: u64) u64 {
+    return if (builtin.mode == builtin.Mode.ReleaseSmall)
+        permuteBits(long, &fp)
+    else
+        permuteBitsPrecomputed(long, prefp);
+}
+
 pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]u8 {
     const dataLong = mem.readIntSliceBig(u64, &data);
-    const perm = permuteBits(dataLong, &ip);
+    const perm = initialPermutation(dataLong);
 
     var left = @truncate(u32, perm & 0xFFFFFFFF);
     var right = @truncate(u32, perm >> 32);
@@ -183,7 +224,7 @@ pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]
     var out: u64 = left;
     out <<= 32;
     out ^= right;
-    out = permuteBits(out, &fp);
+    out = finalPermutation(out);
 
     return mem.asBytes(&out).*;
 }
