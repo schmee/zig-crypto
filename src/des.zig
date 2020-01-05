@@ -225,10 +225,6 @@ pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]
     return mem.asBytes(&out).*;
 }
 
-const shifts = [_]u5{
-    1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
-};
-
 fn permutePc1(long: u64) u64 {
     if (builtin.mode == .ReleaseSmall) {
         return permuteBits(long, &pc1);
@@ -247,6 +243,10 @@ fn permutePc2(long: u56) u56 {
     }
 }
 
+const totalShifts = [_]u32{
+    1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28
+};
+
 fn subkeys(keyBytes: []const u8) [16]u48 {
     const size: u6 = math.maxInt(u6);
     const key = mem.readIntSliceBig(u64, keyBytes);
@@ -256,15 +256,11 @@ fn subkeys(keyBytes: []const u8) [16]u48 {
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
     var keys: [16]u48 = undefined;
 
-    inline for (shifts) |shift, i| {
-        left = math.rotr(u28, left, shift);
-        right = math.rotr(u28, right, shift);
-
-        var subkey: u56 = right;
+    inline for (totalShifts) |shift, i| {
+        var subkey: u56 = math.rotr(u28, right, shift);
         subkey <<= 28;
-        subkey ^= left;
+        subkey ^= math.rotr(u28, left, shift);
         subkey = permutePc2(subkey);
-
         keys[i] = @truncate(u48, subkey);
     }
 
