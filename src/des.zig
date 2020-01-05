@@ -229,23 +229,41 @@ const shifts = [_]u5{
     1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
 };
 
+fn permutePc1(long: u64) u64 {
+    if (builtin.mode == .ReleaseSmall) {
+        return permuteBits(long, &pc1);
+    } else {
+        comptime const prepc1 = precomutePermutation(&pc1);
+        return permuteBitsPrecomputed(long, prepc1);
+    }
+}
+
+fn permutePc2(long: u56) u56 {
+    if (builtin.mode == .ReleaseSmall) {
+        return permuteBits(long, &pc2);
+    } else {
+        comptime const prepc2 = precomutePermutation(&pc2);
+        return @intCast(u56, permuteBitsPrecomputed(@as(u64, long), prepc2));
+    }
+}
+
 fn subkeys(keyBytes: []const u8) [16]u48 {
     const size: u6 = math.maxInt(u6);
     const key = mem.readIntSliceBig(u64, keyBytes);
-    const perm = @truncate(u56, permuteBits(key, &pc1));
+    const perm = @truncate(u56, permutePc1(key));
 
     var left: u28 = @truncate(u28, perm & 0xfffffff);
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
     var keys: [16]u48 = undefined;
 
-    for (shifts) |shift, i| {
+    inline for (shifts) |shift, i| {
         left = math.rotr(u28, left, shift);
         right = math.rotr(u28, right, shift);
 
         var subkey: u56 = right;
         subkey <<= 28;
         subkey ^= left;
-        subkey = permuteBits(subkey, &pc2);
+        subkey = permutePc2(subkey);
 
         keys[i] = @truncate(u48, subkey);
     }
