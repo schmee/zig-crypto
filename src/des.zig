@@ -318,11 +318,11 @@ pub fn desCryptEcb(crypt_mode: CryptMode, keys: var, inData: []const u8, outData
 }
 
 pub fn desEncryptEcb(keys: var, inData: []const u8, outData: []u8) void {
-    desCryptEcb(.Encrypt, keys, inData, outData);
+    desCryptEcbInline(.Encrypt, keys, inData, outData);
 }
 
 pub fn desDecryptEcb(keys: var, inData: []const u8, outData: []u8) void {
-    desCryptEcb(.Decrypt, keys, inData, outData);
+    desCryptEcbInline(.Decrypt, keys, inData, outData);
 }
 
 fn desCryptCbcInline(comptime crypt_mode: CryptMode, keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
