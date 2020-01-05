@@ -167,14 +167,14 @@ pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]
         const k = keys[if (crypt_mode == .Encrypt) i else (15 - i)];
         var work: u32 = 0;
 
-        work = s0[math.rotl(u32, right, 1) & m ^ (k & m)]
-            ^ s1[(right >> 3) & m ^ (k >> 6 & m)]
-            ^ s2[(right >> 7) & m ^ (k >> 12 & m)]
-            ^ s3[(right >> 11) & m ^ (k >> 18 & m)]
-            ^ s4[(right >> 15) & m ^ (k >> 24 & m)]
-            ^ s5[(right >> 19) & m ^ (k >> 30 & m)]
-            ^ s6[(right >> 23) & m ^ ((k >> 36) & m)]
-            ^ s7[math.rotr(u32, right, 1) >> 26 ^ (k >> 42 & m)];
+        work = s0[math.rotl(u32, r, 1) & m ^ (k & m)]
+            ^ s1[(r >> 3) & m ^ (k >> 6 & m)]
+            ^ s2[(r >> 7) & m ^ (k >> 12 & m)]
+            ^ s3[(r >> 11) & m ^ (k >> 18 & m)]
+            ^ s4[(r >> 15) & m ^ (k >> 24 & m)]
+            ^ s5[(r >> 19) & m ^ (k >> 30 & m)]
+            ^ s6[(r >> 23) & m ^ ((k >> 36) & m)]
+            ^ s7[math.rotr(u32, r, 1) >> 26 ^ (k >> 42 & m)];
 
         right = left ^ work;
         left = r;
