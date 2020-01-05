@@ -154,8 +154,8 @@ fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
 }
 
 pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]u8 {
-    var dataLong = mem.readIntSliceBig(u64, &data);
-    var perm = permuteBits(dataLong, &ip);
+    const dataLong = mem.readIntSliceBig(u64, &data);
+    const perm = permuteBits(dataLong, &ip);
 
     var left = @truncate(u32, perm & 0xFFFFFFFF);
     var right = @truncate(u32, perm >> 32);
@@ -195,11 +195,10 @@ const shifts = [_]u5{
 fn subkeys(keyBytes: []const u8) [16]u48 {
     const size: u6 = math.maxInt(u6);
     const key = mem.readIntSliceBig(u64, keyBytes);
-    var perm = @truncate(u56, permuteBits(key, &pc1));
+    const perm = @truncate(u56, permuteBits(key, &pc1));
 
     var left: u28 = @truncate(u28, perm & 0xfffffff);
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
-    var subkey: u48 = 0;
     var i: u8 = 0;
     var keys: [16]u48 = undefined;
 
@@ -211,8 +210,7 @@ fn subkeys(keyBytes: []const u8) [16]u48 {
         out <<= 28;
         out ^= left;
 
-        subkey = @truncate(u48, permuteBits(out, &pc2));
-        keys[i] = subkey;
+        keys[i] = @truncate(u48, permuteBits(out, &pc2));
     }
 
     return keys;
