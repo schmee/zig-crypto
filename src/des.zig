@@ -176,22 +176,18 @@ fn permuteBitsPrecomputed(long: u64, comptime precomputedPerm: [8][256]u64) u64 
     return out;
 }
 
-const preip = precomutePermutation(&ip);
-
 fn initialPermutation(long: u64) u64 {
     return if (builtin.mode == .ReleaseSmall)
         permuteBits(long, &ip)
     else
-        permuteBitsPrecomputed(long, preip);
+        permuteBitsPrecomputed(long, comptime precomutePermutation(&ip));
 }
-
-const prefp = precomutePermutation(&fp);
 
 fn finalPermutation(long: u64) u64 {
     return if (builtin.mode == .ReleaseSmall)
         permuteBits(long, &fp)
     else
-        permuteBitsPrecomputed(long, prefp);
+        permuteBitsPrecomputed(long, comptime precomutePermutation(&fp));
 }
 
 pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]u8 {
@@ -240,18 +236,18 @@ fn subkeys(keyBytes: []const u8) [16]u48 {
 
     var left: u28 = @truncate(u28, perm & 0xfffffff);
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
-    var i: u8 = 0;
     var keys: [16]u48 = undefined;
 
-    while (i < 16) : (i += 1) {
-        left = math.rotr(u28, left, shifts[i]);
-        right = math.rotr(u28, right, shifts[i]);
+    for (shifts) |shift, i| {
+        left = math.rotr(u28, left, shift);
+        right = math.rotr(u28, right, shift);
 
-        var out: u56 = right;
-        out <<= 28;
-        out ^= left;
+        var subkey: u56 = right;
+        subkey <<= 28;
+        subkey ^= left;
+        subkey = permuteBits(subkey, &pc2);
 
-        keys[i] = @truncate(u48, permuteBits(out, &pc2));
+        keys[i] = @truncate(u48, subkey);
     }
 
     return keys;
