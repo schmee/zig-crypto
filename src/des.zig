@@ -140,19 +140,6 @@ pub const CryptMode = enum {
     Decrypt
 };
 
-fn expand(half: u32) u48 {
-    const mask: u8 = (1 << 6) - 1;
-
-    var i: u5 = 0;
-    var out: u48 = math.rotl(u32, half, 1) & mask;
-    while (i < 7) : (i += 1) {
-        const piece: u48 = (half >> (3 + (4 * i))) & mask;
-        out ^= @truncate(u48, piece << 6 * @intCast(u6, i + 1));
-    }
-    out ^= (@intCast(u48, half) & 1) << 47;
-    return out;
-}
-
 // Bugged in --release-fast with this type signature, see https://github.com/ziglang/zig/issues/3980
 // fn permuteBits(long: var, indices: []const math.Log2Int(@TypeOf(long))) @TypeOf(long) {
 fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
@@ -166,32 +153,31 @@ fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
     return out;
 }
 
-fn sbox(long: u48) u32 {
-    var out: u32 = 0;
-    for (sboxes) |*box, i| {
-        const shift: u6 = @intCast(u6, i * 6);
-        out ^= box.*[@truncate(u6, (long >> shift) & 0b111111)];
-    }
-    return out;
-}
-
 pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]u8 {
     var dataLong = mem.readIntSliceBig(u64, &data);
     var perm = permuteBits(dataLong, &ip);
 
-    var i: u8 = 0;
     var left = @truncate(u32, perm & 0xFFFFFFFF);
     var right = @truncate(u32, perm >> 32);
-    var work: u48 = 0;
-    var swork: u32 = 0;
 
-    while (i < 16) : (i += 1) {
-        work = expand(right) ^ keys[if (crypt_mode == .Encrypt) i else (15 - i)];
-        swork = sbox(work);
+    const m: u8 = (1 << 6) - 1;
+    comptime var i: u8 = 0;
+    inline while (i < 16) : (i += 1) {
+        const r = right;
+        const k = keys[if (crypt_mode == .Encrypt) i else (15 - i)];
+        var work: u32 = 0;
 
-        const oldRight = right;
-        right = left ^ swork;
-        left = oldRight;
+        work = s0[math.rotl(u32, right, 1) & m ^ (k & m)]
+            ^ s1[(right >> 3) & m ^ (k >> 6 & m)]
+            ^ s2[(right >> 7) & m ^ (k >> 12 & m)]
+            ^ s3[(right >> 11) & m ^ (k >> 18 & m)]
+            ^ s4[(right >> 15) & m ^ (k >> 24 & m)]
+            ^ s5[(right >> 19) & m ^ (k >> 30 & m)]
+            ^ s6[(right >> 23) & m ^ ((k >> 36) & m)]
+            ^ s7[math.rotr(u32, right, 1) >> 26 ^ (k >> 42 & m)];
+
+        right = left ^ work;
+        left = r;
     }
 
     var out: u64 = left;
