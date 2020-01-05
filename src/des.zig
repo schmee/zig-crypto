@@ -179,7 +179,7 @@ fn permuteBitsPrecomputed(long: u64, comptime precomputedPerm: [8][256]u64) u64 
 const preip = precomutePermutation(&ip);
 
 fn initialPermutation(long: u64) u64 {
-    return if (builtin.mode == builtin.Mode.ReleaseSmall)
+    return if (builtin.mode == .ReleaseSmall)
         permuteBits(long, &ip)
     else
         permuteBitsPrecomputed(long, preip);
@@ -188,7 +188,7 @@ fn initialPermutation(long: u64) u64 {
 const prefp = precomutePermutation(&fp);
 
 fn finalPermutation(long: u64) u64 {
-    return if (builtin.mode == builtin.Mode.ReleaseSmall)
+    return if (builtin.mode == .ReleaseSmall)
         permuteBits(long, &fp)
     else
         permuteBitsPrecomputed(long, prefp);
