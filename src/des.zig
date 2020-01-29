@@ -141,8 +141,6 @@ pub const CryptMode = enum {
     Decrypt
 };
 
-// Bugged in --release-fast with this type signature, see https://github.com/ziglang/zig/issues/3980
-// fn permuteBits(long: var, indices: []const math.Log2Int(@TypeOf(long))) @TypeOf(long) {
 fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
     comptime const T = @TypeOf(long);
     comptime const TL = math.Log2Int(T);
@@ -190,41 +188,6 @@ fn finalPermutation(long: u64) u64 {
         permuteBitsPrecomputed(long, comptime precomutePermutation(&fp));
 }
 
-pub fn desRounds(comptime crypt_mode: CryptMode, keys: [16]u48, data: [8]u8) [8]u8 {
-    const dataLong = mem.readIntSliceBig(u64, &data);
-    const perm = initialPermutation(dataLong);
-
-    var left = @truncate(u32, perm & 0xFFFFFFFF);
-    var right = @truncate(u32, perm >> 32);
-
-    const m: u8 = (1 << 6) - 1;
-    comptime var i: u8 = 0;
-    inline while (i < 16) : (i += 1) {
-        const r = right;
-        const k = keys[if (crypt_mode == .Encrypt) i else (15 - i)];
-        var work: u32 = 0;
-
-        work = s0[math.rotl(u32, r, 1) & m ^ (k & m)]
-            ^ s1[(r >> 3) & m ^ (k >> 6 & m)]
-            ^ s2[(r >> 7) & m ^ (k >> 12 & m)]
-            ^ s3[(r >> 11) & m ^ (k >> 18 & m)]
-            ^ s4[(r >> 15) & m ^ (k >> 24 & m)]
-            ^ s5[(r >> 19) & m ^ (k >> 30 & m)]
-            ^ s6[(r >> 23) & m ^ ((k >> 36) & m)]
-            ^ s7[math.rotr(u32, r, 1) >> 26 ^ (k >> 42 & m)];
-
-        right = left ^ work;
-        left = r;
-    }
-
-    var out: u64 = left;
-    out <<= 32;
-    out ^= right;
-    out = finalPermutation(out);
-
-    return mem.asBytes(&out).*;
-}
-
 fn permutePc1(long: u64) u64 {
     if (builtin.mode == .ReleaseSmall) {
         return permuteBits(long, &pc1);
@@ -243,11 +206,50 @@ fn permutePc2(long: u56) u56 {
     }
 }
 
-const totalShifts = [_]u32{
+pub fn cryptBlock(comptime crypt_mode: CryptMode, keys: []const u48, dest: []u8, source: []const u8) void {
+    assert(source.len == block_size);
+    assert(dest.len >= block_size);
+
+    const dataLong = mem.readIntSliceBig(u64, source);
+    const perm = initialPermutation(dataLong);
+
+    var left = @truncate(u32, perm & 0xFFFFFFFF);
+    var right = @truncate(u32, perm >> 32);
+
+    comptime var i: u8 = 0;
+    inline while (i < 16) : (i += 1) {
+        const r = right;
+        const k = keys[if (crypt_mode == .Encrypt) i else (15 - i)];
+        var work: u32 = 0;
+
+        work = s0[@truncate(u6, math.rotl(u32, r, 1)) ^ @truncate(u6, k)]
+             ^ s1[@truncate(u6, r >> 3) ^ @truncate(u6, k >> 6)]
+             ^ s2[@truncate(u6, r >> 7) ^ @truncate(u6, k >> 12)]
+             ^ s3[@truncate(u6, r >> 11) ^ @truncate(u6, k >> 18)]
+             ^ s4[@truncate(u6, r >> 15) ^ @truncate(u6, k >> 24)]
+             ^ s5[@truncate(u6, r >> 19) ^ @truncate(u6, k >> 30)]
+             ^ s6[@truncate(u6, r >> 23) ^ @truncate(u6, k >> 36)]
+             ^ s7[@truncate(u6, math.rotr(u32, r, 1) >> 26) ^ @truncate(u6, k >> 42)];
+
+        right = left ^ work;
+        left = r;
+    }
+
+    var out: u64 = left;
+    out <<= 32;
+    out ^= right;
+    out = finalPermutation(out);
+    const outBytes = mem.asBytes(&out);
+    mem.copy(u8, dest, outBytes);
+}
+
+const shifts = [_]u32{
     1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28
 };
 
-fn subkeys(keyBytes: []const u8) [16]u48 {
+pub fn subkeys(keyBytes: []const u8) [16]u48 {
+    assert(keyBytes.len == block_size);
+
     const size: u6 = math.maxInt(u6);
     const key = mem.readIntSliceBig(u64, keyBytes);
     const perm = @truncate(u56, permutePc1(key));
@@ -256,7 +258,7 @@ fn subkeys(keyBytes: []const u8) [16]u48 {
     var right: u28 = @truncate(u28, (perm >> 28) & 0xfffffff);
     var keys: [16]u48 = undefined;
 
-    inline for (totalShifts) |shift, i| {
+    inline for (shifts) |shift, i| {
         var subkey: u56 = math.rotr(u28, right, shift);
         subkey <<= 28;
         subkey ^= math.rotr(u28, left, shift);
@@ -267,125 +269,55 @@ fn subkeys(keyBytes: []const u8) [16]u48 {
     return keys;
 }
 
-pub fn desSubkeys(key: [8]u8) [16]u48 {
-    return subkeys(&key);
-}
+pub const DES = struct {
+    const Self = @This();
 
-pub fn des3Subkeys(key: [24]u8) [3][16]u48 {
-    return [_][16]u48{
-        subkeys(key[0..8]),
-        subkeys(key[8..16]),
-        subkeys(key[16..])
-    };
-}
+    subkeys: [16]u48,
 
-fn doOneRound(comptime crypt_mode: CryptMode, keys: var, inData: [8]u8) [8]u8 {
-    var out: [8]u8 = undefined;
-    switch (@TypeOf(keys)) {
-        [16]u48 => {
-            out = desRounds(crypt_mode, keys, inData);
-        },
-        [3][16]u48 => {
-            var block = inData;
-            switch (crypt_mode) {
-                .Encrypt => {
-                    block = desRounds(.Encrypt, keys[0], block);
-                    block = desRounds(.Decrypt, keys[1], block);
-                    out = desRounds(.Encrypt, keys[2], block);
-                },
-                .Decrypt => {
-                    block = desRounds(.Decrypt, keys[2], block);
-                    block = desRounds(.Encrypt, keys[1], block);
-                    out = desRounds(.Decrypt, keys[0], block);
-                }
+    pub fn init(key: [8]u8) Self {
+        return Self {
+            .subkeys = subkeys(&key)
+        };
+    }
+
+    pub fn crypt(self: Self, crypt_mode: CryptMode, dest: []u8, source: []const u8) void {
+        return switch (crypt_mode) {
+            .Encrypt => cryptBlock(.Encrypt, &self.subkeys, dest, source),
+            .Decrypt => cryptBlock(.Decrypt, &self.subkeys, dest, source),
+        };
+    }
+};
+
+pub const TDES = struct {
+    const Self = @This();
+
+    subkeys: [3][16]u48,
+
+    pub fn init(key: [24]u8) Self {
+        return Self {
+            .subkeys = [_][16]u48{
+                subkeys(key[0..8]),
+                subkeys(key[8..16]),
+                subkeys(key[16..])
             }
-        },
-        else => @compileError("Invalid subkeys")
+        };
     }
-    return out;
-}
 
-fn desCryptEcbInline(comptime crypt_mode: CryptMode, keys: var, inData: []const u8, outData: []u8) void {
-    assert(inData.len % 8 == 0);
-    assert(outData.len >= inData.len);
-
-    var i: u64 = 0;
-    var offset: u64 = 0;
-    var buf: [8]u8 = undefined;
-
-    while (offset <= inData.len - block_size) {
-        mem.copy(u8, &buf, inData[offset..(offset + block_size)]);
-        var block: [8]u8 = doOneRound(crypt_mode, keys, buf);
-        for (block) |p, j| {
-            outData[(i * block_size) + j] = p;
-        }
-        i += 1;
-        offset += block_size;
-    }
-}
-
-pub fn desCryptEcb(crypt_mode: CryptMode, keys: var, inData: []const u8, outData: []u8) void {
-    switch (crypt_mode) {
-        .Encrypt => desCryptEcbInline(.Encrypt, keys, inData, outData),
-        .Decrypt => desCryptEcbInline(.Decrypt, keys, inData, outData)
-    }
-}
-
-pub fn desEncryptEcb(keys: var, inData: []const u8, outData: []u8) void {
-    desCryptEcbInline(.Encrypt, keys, inData, outData);
-}
-
-pub fn desDecryptEcb(keys: var, inData: []const u8, outData: []u8) void {
-    desCryptEcbInline(.Decrypt, keys, inData, outData);
-}
-
-fn desCryptCbcInline(comptime crypt_mode: CryptMode, keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    assert(inData.len % 8 == 0);
-    assert(outData.len >= inData.len);
-
-    var i: u64 = 0;
-    var offset: u64 = 0;
-    var buf: [8]u8 = undefined;
-    var newBlock: [8]u8 = undefined;
-    var block: [8]u8 = iv;
-
-    while (offset <= inData.len - block_size) {
-        mem.copy(u8, &buf, inData[offset..(offset + block_size)]);
+    pub fn crypt(self: Self, crypt_mode: CryptMode, dest: []u8, source: []const u8) void {
+        var work: [8]u8 = undefined;
+        mem.copy(u8, &work, source);
         switch (crypt_mode) {
             .Encrypt => {
-                for (buf) |*p, j| {
-                    p.* ^= block[j];
-                }
-                newBlock = doOneRound(.Encrypt, keys, buf);
-                block = newBlock;
+                cryptBlock(.Encrypt, &self.subkeys[0], &work, &work);
+                cryptBlock(.Decrypt, &self.subkeys[1], &work, &work);
+                cryptBlock(.Encrypt, &self.subkeys[2], &work, &work);
             },
             .Decrypt => {
-                newBlock = doOneRound(.Decrypt, keys, buf);
-                for (newBlock) |*p, j| {
-                    p.* ^= block[j];
-                }
-                block = buf;
+                cryptBlock(.Decrypt, &self.subkeys[2], &work, &work);
+                cryptBlock(.Encrypt, &self.subkeys[1], &work, &work);
+                cryptBlock(.Decrypt, &self.subkeys[0], &work, &work);
             }
         }
-        for (newBlock) |c, j| {
-            outData[(i * block_size) + j] = c;
-        }
-        i += 1;
-        offset += block_size;
+        mem.copy(u8, dest, &work);
     }
-}
-
-pub fn desCryptCbc(crypt_mode: CryptMode, keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    switch (crypt_mode) {
-        .Encrypt => desCryptCbcInline(.Encrypt, keys, iv, inData, outData),
-        .Decrypt => desCryptCbcInline(.Decrypt, keys, iv, inData, outData)
-    }
-}
-
-pub fn desEncryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    desCryptCbcInline(.Encrypt, keys, iv, inData, outData);
-}
-
-pub fn desDecryptCbc(keys: var, iv: [8]u8, inData: []const u8, outData: []u8) void {
-    desCryptCbcInline(.Decrypt, keys, iv, inData, outData);
-}
+};
