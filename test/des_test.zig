@@ -1,5 +1,5 @@
 const std = @import("std");
-const Sha1 = std.crypto.Sha1;
+const Sha1 = std.crypto.hash.Sha1;
 const expectEqual = std.testing.expectEqual;
 const fmt = std.fmt;
 const mem = std.mem;
@@ -194,7 +194,7 @@ test "encrypt random data with ECB" {
         }
     }
 
-    var digest = Sha1.init();
+    var digest = Sha1.init(.{});
     digest.update(encryptedData);
     var out: [Sha1.digest_length]u8 = undefined;
     digest.final(&out);
@@ -247,7 +247,7 @@ test "3DES ECB crypt" {
     var encryptedData = try allocator.alloc(u8, inData.len);
     var decryptedData = try allocator.alloc(u8, inData.len);
     defer allocator.free(encryptedData);
-    defer allocator.free(encryptedData);
+    defer allocator.free(decryptedData);
 
     var key = [_]u8{0} ** 24;
     var cipher = TDES.init(key);

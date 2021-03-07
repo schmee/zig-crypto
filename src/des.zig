@@ -141,7 +141,7 @@ pub const CryptMode = enum {
     Decrypt
 };
 
-fn permuteBits(long: var, indices: []const u8) @TypeOf(long) {
+fn permuteBits(long: anytype, indices: []const u8) @TypeOf(long) {
     comptime const T = @TypeOf(long);
     comptime const TL = math.Log2Int(T);
 
