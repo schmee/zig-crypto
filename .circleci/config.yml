@@ -20,8 +20,7 @@ jobs:
               curl -O $ZIG_URL
               mkdir zig
               tar -C zig -xf ${ZIG_URL##*/} --strip 1
-              sudo cp -r zig/lib/zig /usr/local/lib
-              sudo cp zig/zig /usr/local/bin
+              echo "export PATH=$PATH:zig" >> $BASH_ENV
 
       - run:
           name: Test Debug
