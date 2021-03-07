@@ -136,10 +136,7 @@ const s7 = [_]u32{
 
 const sboxes = [8][64]u32{ s0, s1, s2, s3, s4, s5, s6, s7 };
 
-pub const CryptMode = enum {
-    Encrypt,
-    Decrypt
-};
+pub const CryptMode = enum { Encrypt, Decrypt };
 
 fn permuteBits(long: anytype, indices: []const u8) @TypeOf(long) {
     comptime const T = @TypeOf(long);
@@ -222,6 +219,7 @@ pub fn cryptBlock(comptime crypt_mode: CryptMode, keys: []const u48, dest: []u8,
         const k = keys[if (crypt_mode == .Encrypt) i else (15 - i)];
         var work: u32 = 0;
 
+        // zig fmt: off
         work = s0[@truncate(u6, math.rotl(u32, r, 1)) ^ @truncate(u6, k)]
              ^ s1[@truncate(u6, r >> 3) ^ @truncate(u6, k >> 6)]
              ^ s2[@truncate(u6, r >> 7) ^ @truncate(u6, k >> 12)]
@@ -230,6 +228,7 @@ pub fn cryptBlock(comptime crypt_mode: CryptMode, keys: []const u48, dest: []u8,
              ^ s5[@truncate(u6, r >> 19) ^ @truncate(u6, k >> 30)]
              ^ s6[@truncate(u6, r >> 23) ^ @truncate(u6, k >> 36)]
              ^ s7[@truncate(u6, math.rotr(u32, r, 1) >> 26) ^ @truncate(u6, k >> 42)];
+                // zig fmt: on
 
         right = left ^ work;
         left = r;
@@ -244,7 +243,7 @@ pub fn cryptBlock(comptime crypt_mode: CryptMode, keys: []const u48, dest: []u8,
 }
 
 const shifts = [_]u32{
-    1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28
+    1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28,
 };
 
 pub fn subkeys(keyBytes: []const u8) [16]u48 {
@@ -275,9 +274,7 @@ pub const DES = struct {
     subkeys: [16]u48,
 
     pub fn init(key: [8]u8) Self {
-        return Self {
-            .subkeys = subkeys(&key)
-        };
+        return Self{ .subkeys = subkeys(&key) };
     }
 
     pub fn crypt(self: Self, crypt_mode: CryptMode, dest: []u8, source: []const u8) void {
@@ -294,13 +291,11 @@ pub const TDES = struct {
     subkeys: [3][16]u48,
 
     pub fn init(key: [24]u8) Self {
-        return Self {
-            .subkeys = [_][16]u48{
-                subkeys(key[0..8]),
-                subkeys(key[8..16]),
-                subkeys(key[16..])
-            }
-        };
+        return Self{ .subkeys = [_][16]u48{
+            subkeys(key[0..8]),
+            subkeys(key[8..16]),
+            subkeys(key[16..]),
+        } };
     }
 
     pub fn crypt(self: Self, crypt_mode: CryptMode, dest: []u8, source: []const u8) void {
@@ -316,7 +311,7 @@ pub const TDES = struct {
                 cryptBlock(.Decrypt, &self.subkeys[2], &work, &work);
                 cryptBlock(.Encrypt, &self.subkeys[1], &work, &work);
                 cryptBlock(.Decrypt, &self.subkeys[0], &work, &work);
-            }
+            },
         }
         mem.copy(u8, dest, &work);
     }
